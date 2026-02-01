@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Wikipedia Maker - セキュリティ強化版</title>
+    <style>
+        /* 土佐版のデザインをそのまま継承 */
+        body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background-color: #f6f6f6; margin: 0; padding: 10px; color: #202122; line-height: 1.8; }
+        .container { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; }
+        
+        @media (min-width: 900px) {
+            .container { flex-direction: row; align-items: flex-start; }
+            .input-area { width: 380px; position: sticky; top: 10px; }
+            #wiki-article { flex: 1; }
+        }
+
+        .input-area { background: white; border: 1px solid #a2a9b1; padding: 25px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        button#main-btn { width: 100%; padding: 15px; background: #36c; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1.1em; }
+
+        #wiki-article { display: none; background: white; border: 1px solid #a2a9b1; padding: 30px 40px; min-height: 100vh; }
+        h1 { font-family: serif; border-bottom: 1px solid #a2a9b1; font-size: 1.8em; margin: 0 0 15px; font-weight: normal; }
+
+        .infobox { float: right; border: 1px solid #a2a9b1; background: #f8f9fa; width: 280px; margin: 0 0 20px 20px; font-size: 88%; border-spacing: 2px; }
+        @media (max-width: 600px) { .infobox { float: none; width: 100%; margin: 0 0 20px 0; } }
+        .infobox th { background: #cedff2; padding: 6px; text-align: left; width: 35%; }
+        .infobox td { background: #f8f9fa; padding: 6px; border-top: 1px solid #a2a9b1; }
+        .infobox img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+
+        .article-image-wrapper { border: 1px solid #ccc; background: #f9f9f9; padding: 5px; margin: 15px 0; display: inline-block; max-width: 350px; text-align: center; font-size: 0.85em; }
+        .add-img-btn { background: #f8f9fa; border: 1px dashed #a2a9b1; padding: 8px; cursor: pointer; font-size: 0.8em; margin: 10px 0; color: #36c; width: fit-content; }
+
+        [contenteditable="true"]:hover { background: #ffffea; outline: 1px dashed #36c; }
+        #out-content h2 { border-bottom: 1px solid #a2a9b1; margin-top: 1.5em; font-family: serif; font-weight: normal; }
+
+        .wiki-link { color: #0645ad; text-decoration: none; }
+        .wiki-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<script>
+    const password = prompt("合言葉を入力してつかあさい");
+    if (password !== "tosa2026") { 
+        alert("アクセス禁止ぜよ！");
+        window.location.href = "https://www.google.com";
+    }
+</script>
+
+<div class="container">
+    <div class="input-area">
+        <h2 style="margin-top:0; border-bottom: 2px solid #36c;">土佐版Wiki：管理パネル</h2>
+        <div class="input-group"><label>対象者の氏名</label><input type="text" id="nameInput" placeholder="にしだきたろー"></div>
+        <div class="input-group"><label>メイン画像</label><input type="file" id="mainImgInput" accept="image/*" onchange="previewMain()"></div>
+        <div class="input-group"><label>職業・肩書き</label><input type="text" id="jobInput" placeholder="AI開発者"></div>
+        <div class="input-group"><label>生い立ちや特徴</label><textarea id="bioInput" rows="7" placeholder="詳しく教えてつかあさい！"></textarea></div>
+        <button id="main-btn" onclick="askAI()">中継サーバー経由で編纂するぜよ！</button>
+        <div id="status" style="margin-top:15px; font-weight: bold; color:#36c; text-align: center;"></div>
+    </div>
+
+    <div id="wiki-article">
+        <h1 id="out-title" contenteditable="true"></h1>
+        
+        <table class="infobox">
+            <tr><th colspan="2" id="out-info-name" style="text-align:center; background:#cedff2;" contenteditable="true"></th></tr>
+            <tr><td colspan="2" style="text-align:center; padding:10px;"><img id="main-preview" src=""></td></tr>
+            <tr><th>職業</th><td id="out-job" contenteditable="true"></td></tr>
+            <tr><th>活動期間</th><td id="out-period" contenteditable="true">2026年 - 現在</td></tr>
+        </table>
+
+        <div id="out-content" contenteditable="true"></div>
+        
+        <div style="clear: both; margin-top: 50px; font-size: 0.8em; color: #54595d; border-top: 1px solid #a2a9b1; padding-top: 10px;">
+            ※このページは中継サーバーを経由して安全に生成されたジョーク記事ながやき。
+        </div>
+    </div>
+</div>
+
+<input type="file" id="hiddenFileInput" style="display:none;" accept="image/*">
+
+<script>
+let targetSection = null;
+
+function previewMain() {
+    const file = document.getElementById('mainImgInput').files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => document.getElementById('main-preview').src = e.target.result;
+    if (file) reader.readAsDataURL(file);
+}
+
+function triggerImageInsert(btn) {
+    targetSection = btn;
+    document.getElementById('hiddenFileInput').click();
+}
+
+document.getElementById('hiddenFileInput').onchange = function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'article-image-wrapper';
+        wrapper.contentEditable = "false";
+        wrapper.innerHTML = `<img src="${event.target.result}" style="width:100%;"><div contenteditable="true" style="padding:5px;">画像の説明を入れるぜよ。</div>`;
+        targetSection.parentNode.insertBefore(wrapper, targetSection.nextSibling);
+    };
+    if (file) reader.readAsDataURL(file);
+};
+
+async function askAI() {
+    const name = document.getElementById('nameInput').value;
+    const job = document.getElementById('jobInput').value;
+    const bio = document.getElementById('bioInput').value;
+    const status = document.getElementById('status');
+
+    if(!name || !job) return alert("情報を入れんといかんぜよ！");
+    status.innerText = "安全な経路で執筆中ぜよ...";
+
+    try {
+        // ★ここがポイント！OpenAIではなく、自分のサーバー（api/generate）に頼む
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, job, bio })
+        });
+
+        const result = await response.json();
+        // サーバーから返ってきたAIの文章
+        let body = result.choices[0].message.content.replace(/```html/g, '').replace(/```/g, '').trim();
+        
+        // 以下、見た目を整える処理（前回と同じ）
+        body = body.replace(/## (概要|来歴|人物・エピソード|評価)/g, '<h2>$1</h2><div class="add-img-btn" onclick="triggerImageInsert(this)">[＋ 画像を挿入するぜよ]</div>');
+        body = body.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        body = body.replace(/\n/g, '<br>');
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = body;
+        tempDiv.querySelectorAll('.wiki-link').forEach(link => {
+            link.href = `https://ja.wikipedia.org/wiki/${encodeURIComponent(link.innerText)}`;
+            link.target = '_blank';
+        });
+
+        document.getElementById('out-title').innerText = name;
+        document.getElementById('out-info-name').innerText = name;
+        document.getElementById('out-content').innerHTML = tempDiv.innerHTML;
+        document.getElementById('out-job').innerText = job;
+        document.getElementById('wiki-article').style.display = 'block';
+        status.innerText = "安全に完成したぜよ！";
+        window.scrollTo({ top: document.getElementById('wiki-article').offsetTop, behavior: 'smooth' });
+
+    } catch (e) { 
+        status.innerText = "中継サーバーとの接続に失敗したぜよ。Vercelの設定を確認してつかあさい。";
+        console.error(e); 
+    }
+}
+</script>
+</body>
+</html>
